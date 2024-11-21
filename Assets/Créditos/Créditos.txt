@@ -1,0 +1,38 @@
+Créditos
+---------------------------------------------------------------------------
+
+Stylized Grass Texture
+
+LowlyPoly
+License agreement
+Standard Unity Asset Store EULA
+License type
+Extension Asset
+File size
+16.9 MB
+Latest version
+1.0
+Latest release date
+Jul 1, 2022
+Original Unity version
+2020.3.36 or higher
+https://assetstore.unity.com/packages/2d/textures-materials/glass/stylized-grass-texture-153153 
+
+----------------------------------------------------------------------------
+
+SimplePoly City - Low Poly Assets
+
+VenCreations
+License agreement
+Standard Unity Asset Store EULA
+License type
+Extension Asset
+File size
+3.4 MB
+Latest version
+1.2.3
+Latest release date
+Apr 6, 2017
+Original Unity version
+5.1.0 or higher
+https://assetstore.unity.com/packages/3d/environments/simplepoly-city-low-poly-assets-58899
