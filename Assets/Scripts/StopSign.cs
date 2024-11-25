@@ -2,12 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum StopSignColor
-{
-    RED,
-    YELLOW,
-    GREEN,
-}
 
 
 public class StopSign : MonoBehaviour
@@ -21,7 +15,7 @@ public class StopSign : MonoBehaviour
 
 
 
-    public void SetColor(StopSignColor color)
+    public void SetColor(string color)
     {
         redMaterial.DisableKeyword("_EMISSION");
         greenMaterial.DisableKeyword("_EMISSION");
@@ -29,13 +23,13 @@ public class StopSign : MonoBehaviour
 
         switch (color)
         {
-            case StopSignColor.RED:
+            case "RED":
                 redMaterial.EnableKeyword("_EMISSION");
                 break;
-            case StopSignColor.YELLOW:
+            case "YELLOW":
                 yellowMaterial.EnableKeyword("_EMISSION");
                 break;
-            case StopSignColor.GREEN:
+            case "GREEN":
                 greenMaterial.EnableKeyword("_EMISSION");
                 break;
             default:
