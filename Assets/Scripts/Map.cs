@@ -45,17 +45,16 @@ public class Map : MonoBehaviour
     }
 
 
-    public List<CarObject> cars;
+    public List<Mesh> carMeshes;
+    private List<Mesh> originalCarMeshes;
 
     private MapData currentMapData;
     private MapData nextMapData;
 
 
-
     [SerializeField] GameObject[] carPrefabs;
 
     [SerializeField] StopSign[] stoplightSigns;
-    [SerializeField] Parking[] parkingSpots;
 
 
 
@@ -64,49 +63,60 @@ public class Map : MonoBehaviour
 
 
     private string url = "http://127.0.0.1:5000/map-data"; // Set your API URL here
+    private bool carsInitialized;
+    private bool isUpdatingSteps;
+
 
     void Start()
     {
-
-        SpawnCars();
-        StartCoroutine(Main());
+        isUpdatingSteps = false;
+        carsInitialized = false;
     }
 
-    void SpawnCars()
+    void InitializeCars()
     {
-        cars = new List<CarObject>();
-        foreach (var p in parkingSpots)
+        carsInitialized = true;
+        carMeshes = new List<Mesh>();
+        originalCarMeshes = new List<Mesh>();
+
+        for (int i = 0; i < nextMapData.cars.Length; i++)
         {
-            p.cars = carPrefabs;
-            GameObject car = p.SpawnCar();
+            GameObject selectedCar = carPrefabs[i % carPrefabs.Length];
+            MeshFilter meshFilter = Instantiate(selectedCar, Vector3.zero, Quaternion.identity).GetComponent<MeshFilter>();
+            Mesh originalMeshCopy = Instantiate(meshFilter.sharedMesh);
 
-            cars.Add(new CarObject
-            {
-                mesh = car.GetComponent<MeshFilter>().mesh,
-                mem = Matrix4x4.identity
-            });
-
+            originalCarMeshes.Add(originalMeshCopy);
+            carMeshes.Add(meshFilter.mesh);
         }
     }
 
-    IEnumerator Main()
+    IEnumerator UpdateSteps()
     {
-        while (true) // Infinite loop to keep sending requests
+        isUpdatingSteps = true;
+        yield return StartCoroutine(MakeStepRequest(url)); // Make the request
+
+        if (!carsInitialized)
         {
-            yield return StartCoroutine(MakeStepRequest(url, false)); // Make the request
-            yield return StartCoroutine(MakeStepRequest(url, true)); // Make the request
-            UpdateMap();
-            yield return new WaitForSeconds(1f); // Wait for 1 second
-        }
+            InitializeCars();
+            yield return StartCoroutine(MakeStepRequest(url)); // Make the request
+        };
+        interpolationElapsedTime = 0;
+        isUpdatingSteps = false;
+        UpdateStopSigns();
+
     }
 
     void Update()
     {
-        //UpdateMap();
+        if (carsInitialized)
+            UpdateCarPositions();
+        else if (!isUpdatingSteps)
+            StartCoroutine(UpdateSteps());
+
     }
 
 
-    IEnumerator MakeStepRequest(string url, bool next)
+    IEnumerator MakeStepRequest(string url)
     {
         // Create the request
         using (UnityWebRequest request = UnityWebRequest.Get(url))
@@ -127,10 +137,23 @@ public class Map : MonoBehaviour
                 {
                     MapData mapData = JsonUtility.FromJson<MapData>(request.downloadHandler.text);
 
-                    if (next) nextMapData = mapData;
-                    else currentMapData = mapData;
+                    // On the first request (next is false), just set the current map data
+                    if (!carsInitialized)
+                    {
+                        nextMapData = mapData;
+                    }
+                    // On subsequent requests (next is true), update both current and next
+                    else
+                    {
+                        // Shift the data: current becomes the previous next
+                        currentMapData = nextMapData;
+                        // New data becomes the next
+                        nextMapData = mapData;
+                    }
 
-                    //Debug.Log("Received Step Data: " + JsonUtility.ToJson(mapData));
+
+
+
                 }
                 catch (System.Exception e)
                 {
@@ -140,18 +163,11 @@ public class Map : MonoBehaviour
         }
     }
 
-    void UpdateMap()
-    {
-        UpdateCarPositions();
-        UpdateStopSigns();
-
-    }
-
 
     void UpdateStopSigns()
     {
 
-        for (int lightIndex = 0; lightIndex < currentMapData.lights.Length; lightIndex++)
+        for (int lightIndex = 0; lightIndex < nextMapData.lights.Length; lightIndex++)
         {
 
             Light lightData = currentMapData.lights[lightIndex];
@@ -163,70 +179,87 @@ public class Map : MonoBehaviour
 
     void UpdateCarPositions()
     {
-        Vector3 offset = new Vector3(5, 0, 5);
-        int cellSize = 10;
+        if (nextMapData == null || currentMapData == null) return;
 
-        for (int carIndex = 0; carIndex < currentMapData.cars.Length; carIndex++)
+
+        if (interpolationElapsedTime < interpolationDuration)
         {
-            Car carData = currentMapData.cars[carIndex];
-            int carObjIndex = carData.id - 1;
 
-            //set it to origin
-            Matrix4x4 posM = VectorOperations.GetMoveToMatrix(cars[carObjIndex].mem, new Vector3(carData.posX, 0, carData.posY) * cellSize + offset);
+            // Update interpolation time
+            interpolationElapsedTime += Time.deltaTime;
+            float t = interpolationElapsedTime / interpolationDuration;
 
-
-            //move it to current pos
-
-            //lerp it to next pos 
-
-            //if currdir is diff from next dir lerp rotation
+            Vector3 offset = new Vector3(5, 0, 5);
+            int cellSize = 10;
 
 
-
-            Matrix4x4 mem = VectorOperations.ApplyTransformMatrixToMesh(posM, cars[carObjIndex].mesh);
-
-            cars[carObjIndex] = new CarObject
+            for (int i = 0; i < currentMapData.cars.Length; i++)
             {
-                mem = mem,
-                mesh = cars[carObjIndex].mesh,
-            };
+                Car currentCarData = currentMapData.cars[i];
+                Car nextCarData = nextMapData.cars[i];
+                Vector3 currentPos = new Vector3(currentCarData.posX, 0, currentCarData.posY) * cellSize + offset;
+                Vector3 nextPos = new Vector3(nextCarData.posX, 0, nextCarData.posY) * cellSize + offset;
 
-            //transform.position = new Vector3(carData.posX, 0, carData.posY) * cellSize + offset;
 
-            // Set the car's rotation based on dirX and dirY
-            //SetCarRotation(cars[carObjIndex], carData.dirX, carData.dirY);
+                // Reset the mesh to its original state at the origin
+                carMeshes[i].vertices = originalCarMeshes[i].vertices;
+                carMeshes[i].RecalculateBounds();
 
+
+
+                //if currdir is diff from next dir lerp rotation
+                // Rotation interpolation
+                float currentRotation = GetRotationFromDirection(currentCarData.dirX, currentCarData.dirY);
+                float nextRotation = GetRotationFromDirection(nextCarData.dirX, nextCarData.dirY);
+                Matrix4x4 rotM;
+
+                // Lerp the rotation if directions are different
+                if (currentRotation != nextRotation)
+                    rotM = VectorOperations.GetYRotationMatrix(VectorOperations.LerpAngle(currentRotation, nextRotation, t));
+                else
+                    rotM = VectorOperations.GetYRotationMatrix(currentRotation);
+
+
+                //lerp it to next pos 
+                Vector3 interpolatedPos = VectorOperations.Lerp(currentPos, nextPos, t);
+                Matrix4x4 m = VectorOperations.GetTranslationMatrix(interpolatedPos);
+                VectorOperations.ApplyTransformMatrixToMesh(m * rotM, carMeshes[i]);
+            }
         }
+        else if (!isUpdatingSteps)
+        {
+            StartCoroutine(UpdateSteps());
+        }
+
+
     }
 
 
-    void SetCarRotation(GameObject car, int dirX, int dirY)
+    float GetRotationFromDirection(int dirX, int dirY)
     {
-        Quaternion rotation = Quaternion.identity;
-
         if (dirX == 1 && dirY == 0)
         {
             // Facing right
-            rotation = Quaternion.Euler(0, 0, 0);
+            return 0;
         }
         else if (dirX == -1 && dirY == 0)
         {
             // Facing left
-            rotation = Quaternion.Euler(0, 180, 0);
+            return 180;
         }
         else if (dirX == 0 && dirY == 1)
         {
             // Facing up
-            rotation = Quaternion.Euler(0, -90, 0);
+            return 270;
         }
         else if (dirX == 0 && dirY == -1)
         {
             // Facing down
-            rotation = Quaternion.Euler(0, 90, 0);
+            return 90;
         }
 
-        // Apply the rotation
-        car.transform.rotation = rotation;
+        return 0;
+
     }
 
 
