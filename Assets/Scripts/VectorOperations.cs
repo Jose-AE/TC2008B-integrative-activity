@@ -3,6 +3,16 @@ using UnityEngine;
 
 public class VectorOperations
 {
+
+    public static Vector3 Lerp(Vector3 a, Vector3 b, float t)
+    {
+        t = Mathf.Clamp01(t);
+
+        Vector3 interpolatedPos = a + t * (b - a);
+
+        return interpolatedPos;
+    }
+
     public static Vector3 Reflect(Vector3 a, Vector3 n)
     {
         // Normalize the normal vector to ensure it's a unit vector
@@ -54,6 +64,18 @@ public class VectorOperations
         matrix[2, 3] = transform.z;
         return matrix;
     }
+
+
+    public static Matrix4x4 GetMoveToMatrix(Matrix4x4 memo, Vector3 pos)
+    {
+        Vector3 currentPos = memo.GetColumn(3);
+        Vector3 offset = pos - currentPos;
+
+        Matrix4x4 target = GetTranslationMatrix(offset);
+
+        return target * memo;
+    }
+
 
 
     public static Matrix4x4 GetScaleMatrix(Vector3 scale)
@@ -114,7 +136,7 @@ public class VectorOperations
         );
     }
 
-    public static void ApplyTransformMatrixToMesh(Matrix4x4 matrix, Mesh mesh)
+    public static Matrix4x4 ApplyTransformMatrixToMesh(Matrix4x4 matrix, Mesh mesh)
     {
         Vector3[] vertices = mesh.vertices;
 
@@ -134,6 +156,8 @@ public class VectorOperations
         // Recalculate mesh bounds and normals, if necessary
         mesh.RecalculateBounds();
         mesh.RecalculateNormals();
+
+        return matrix;
     }
 
 

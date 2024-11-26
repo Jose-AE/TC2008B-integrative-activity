@@ -17,6 +17,6 @@ public class Parking : MonoBehaviour
         GameObject selectedCar = cars[randomIndex];
 
         // Instantiate the car at the spawn point (or use the object's position as spawn point)
-        return Instantiate(selectedCar, transform.position, Quaternion.Euler(0, 0, 0));
+        return Instantiate(selectedCar, Vector3.zero, Quaternion.Euler(0, 0, 0));
     }
 }

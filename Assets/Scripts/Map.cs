@@ -37,9 +37,19 @@ public class Map : MonoBehaviour
 
 
 
+    [System.Serializable]
+    public struct CarObject
+    {
+        public Matrix4x4 mem;
+        public Mesh mesh;
+    }
 
-    private List<MapData> steps;
-    private List<GameObject> cars;
+
+    public List<CarObject> cars;
+
+    private MapData currentMapData;
+    private MapData nextMapData;
+
 
 
     [SerializeField] GameObject[] carPrefabs;
@@ -49,22 +59,33 @@ public class Map : MonoBehaviour
 
 
 
+    private float interpolationDuration = 1f; // Duration of the interpolation
+    private float interpolationElapsedTime = 0f;
+
+
     private string url = "http://127.0.0.1:5000/map-data"; // Set your API URL here
 
     void Start()
     {
-        steps = new List<MapData>();
-        cars = new List<GameObject>();
-        InitParkingSpots();
+
+        SpawnCars();
         StartCoroutine(Main());
     }
 
-    void InitParkingSpots()
+    void SpawnCars()
     {
+        cars = new List<CarObject>();
         foreach (var p in parkingSpots)
         {
             p.cars = carPrefabs;
-            cars.Add(p.SpawnCar());
+            GameObject car = p.SpawnCar();
+
+            cars.Add(new CarObject
+            {
+                mesh = car.GetComponent<MeshFilter>().mesh,
+                mem = Matrix4x4.identity
+            });
+
         }
     }
 
@@ -72,13 +93,20 @@ public class Map : MonoBehaviour
     {
         while (true) // Infinite loop to keep sending requests
         {
-            yield return StartCoroutine(MakeStepRequest(url)); // Make the request
+            yield return StartCoroutine(MakeStepRequest(url, false)); // Make the request
+            yield return StartCoroutine(MakeStepRequest(url, true)); // Make the request
             UpdateMap();
-            yield return new WaitForSeconds(0.5f); // Wait for 1 second
+            yield return new WaitForSeconds(1f); // Wait for 1 second
         }
     }
 
-    IEnumerator MakeStepRequest(string url)
+    void Update()
+    {
+        //UpdateMap();
+    }
+
+
+    IEnumerator MakeStepRequest(string url, bool next)
     {
         // Create the request
         using (UnityWebRequest request = UnityWebRequest.Get(url))
@@ -98,7 +126,10 @@ public class Map : MonoBehaviour
                 try
                 {
                     MapData mapData = JsonUtility.FromJson<MapData>(request.downloadHandler.text);
-                    steps.Add(mapData);
+
+                    if (next) nextMapData = mapData;
+                    else currentMapData = mapData;
+
                     //Debug.Log("Received Step Data: " + JsonUtility.ToJson(mapData));
                 }
                 catch (System.Exception e)
@@ -120,11 +151,10 @@ public class Map : MonoBehaviour
     void UpdateStopSigns()
     {
 
-
-        for (int lightIndex = 0; lightIndex < steps[steps.Count - 1].lights.Length; lightIndex++)
+        for (int lightIndex = 0; lightIndex < currentMapData.lights.Length; lightIndex++)
         {
 
-            Light lightData = steps[steps.Count - 1].lights[lightIndex];
+            Light lightData = currentMapData.lights[lightIndex];
             stoplightSigns[lightData.id].SetColor(lightData.state);
 
         }
@@ -136,17 +166,35 @@ public class Map : MonoBehaviour
         Vector3 offset = new Vector3(5, 0, 5);
         int cellSize = 10;
 
-        for (int carIndex = 0; carIndex < steps[steps.Count - 1].cars.Length; carIndex++)
+        for (int carIndex = 0; carIndex < currentMapData.cars.Length; carIndex++)
         {
-
-
-            Car carData = steps[steps.Count - 1].cars[carIndex];
+            Car carData = currentMapData.cars[carIndex];
             int carObjIndex = carData.id - 1;
 
-            cars[carObjIndex].transform.position = new Vector3(carData.posX, 0, carData.posY) * cellSize + offset;
+            //set it to origin
+            Matrix4x4 posM = VectorOperations.GetMoveToMatrix(cars[carObjIndex].mem, new Vector3(carData.posX, 0, carData.posY) * cellSize + offset);
+
+
+            //move it to current pos
+
+            //lerp it to next pos 
+
+            //if currdir is diff from next dir lerp rotation
+
+
+
+            Matrix4x4 mem = VectorOperations.ApplyTransformMatrixToMesh(posM, cars[carObjIndex].mesh);
+
+            cars[carObjIndex] = new CarObject
+            {
+                mem = mem,
+                mesh = cars[carObjIndex].mesh,
+            };
+
+            //transform.position = new Vector3(carData.posX, 0, carData.posY) * cellSize + offset;
 
             // Set the car's rotation based on dirX and dirY
-            SetCarRotation(cars[carObjIndex], carData.dirX, carData.dirY);
+            //SetCarRotation(cars[carObjIndex], carData.dirX, carData.dirY);
 
         }
     }
