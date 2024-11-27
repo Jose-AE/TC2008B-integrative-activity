@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.Networking; // Required for UnityWebRequest
+using UnityEngine.Networking;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -58,11 +58,11 @@ public class Map : MonoBehaviour
 
 
     [Range(0.1f, 1f)]
-    [SerializeField] float interpolationDuration = 1f; // Duration of the interpolation
+    [SerializeField] float interpolationDuration = 1f;
     private float interpolationElapsedTime = 0f;
 
 
-    private string url = "http://127.0.0.1:5000/map-data"; // Set your API URL here
+    private string url = "http://localhost:3000/map-data";
     private bool carsInitialized;
     private bool isUpdatingSteps;
 
@@ -93,12 +93,11 @@ public class Map : MonoBehaviour
     IEnumerator UpdateSteps()
     {
         isUpdatingSteps = true;
-        yield return StartCoroutine(MakeStepRequest(url)); // Make the request
-
+        yield return StartCoroutine(MakeStepRequest(url));
         if (!carsInitialized)
         {
             InitializeCars();
-            yield return StartCoroutine(MakeStepRequest(url)); // Make the request
+            yield return StartCoroutine(MakeStepRequest(url));
         };
         interpolationElapsedTime = 0;
         isUpdatingSteps = false;

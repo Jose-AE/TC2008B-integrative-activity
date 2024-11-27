@@ -6,14 +6,11 @@ public class VectorOperations
 
     public static float LerpAngle(float a, float b, float t)
     {
-        // Calculate the difference between the angles
         float delta = b - a;
 
-        // Normalize the difference to the range [-180, 180]
         while (delta > 180f) delta -= 360f;
         while (delta < -180f) delta += 360f;
 
-        // Interpolate the angle
         return a + delta * Mathf.Clamp01(t);
     }
 
@@ -28,10 +25,8 @@ public class VectorOperations
 
     public static Vector3 Reflect(Vector3 a, Vector3 n)
     {
-        // Normalize the normal vector to ensure it's a unit vector
         n.Normalize();
 
-        // Calculate the reflected vector using the reflection formula
         Vector3 reflected = a - 2 * Vector3.Dot(a, n) * n;
 
         return reflected;
@@ -39,10 +34,8 @@ public class VectorOperations
 
     public static Vector3 Normalize(Vector3 a)
     {
-        // Calculate the magnitude of vector a
         float magnitude = a.magnitude;
 
-        // If magnitude is not zero, normalize the vector
         if (magnitude > 0)
         {
             return a / magnitude;
