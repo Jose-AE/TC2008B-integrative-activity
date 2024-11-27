@@ -45,7 +45,7 @@ public class Map : MonoBehaviour
     }
 
 
-    public List<Mesh> carMeshes;
+    private List<Mesh> carMeshes;
     private List<Mesh> originalCarMeshes;
 
     private MapData currentMapData;
@@ -57,8 +57,8 @@ public class Map : MonoBehaviour
     [SerializeField] StopSign[] stoplightSigns;
 
 
-
-    private float interpolationDuration = 1f; // Duration of the interpolation
+    [Range(0.1f, 1f)]
+    [SerializeField] float interpolationDuration = 1f; // Duration of the interpolation
     private float interpolationElapsedTime = 0f;
 
 
